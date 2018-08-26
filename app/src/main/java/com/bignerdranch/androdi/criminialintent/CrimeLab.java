@@ -1,6 +1,14 @@
 package com.bignerdranch.androdi.criminialintent;
 
+import android.content.ContentValues;
 import android.content.Context;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+
+import com.bignerdranch.androdi.criminialintent.database.CrimeBaseHelper;
+import com.bignerdranch.androdi.criminialintent.database.CrimeCursorWrapper;
+import com.bignerdranch.androdi.criminialintent.database.CrimeDbSchema;
+import com.bignerdranch.androdi.criminialintent.database.CrimeDbSchema.CrimeTable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,8 +24,10 @@ public class CrimeLab {
 
     private static CrimeLab INSTANCE;
 
-    private final Context context;
-    private final List<Crime> crimes;
+    private Context context;
+    private final List<Crime> crimes =  new ArrayList<>();
+
+    private SQLiteDatabase database;
 
     // Singleton pattern
     public static CrimeLab get(@NonNull final Context context) {
@@ -29,18 +39,82 @@ public class CrimeLab {
         return INSTANCE;
     }
 
-    private CrimeLab(final Context context) {
-        this.context = context;
+    public List<Crime> getCrimes() {
+        List<Crime> crimes = new ArrayList<>();
 
-        crimes = new ArrayList<>();
-        for (int i = 0; i < 100; i++) {
-            crimes.add(new Crime("Crime #" + i, i %2 == 0));
+        CrimeCursorWrapper cursor = queryCrimes(null, null);
+        try {
+            cursor.moveToFirst();
+            while (!cursor.isAfterLast()) {
+                crimes.add(cursor.getCrime());
+                cursor.moveToNext();
+            }
+        } finally {
+            cursor.close();
         }
+
+        return crimes;
+    }
+
+    public void addCrime(@NonNull final Crime crime) {
+        database.insert(CrimeTable.NAME, null, getContentValues(crime));
+    }
+
+    public void updateCrime(Crime crime) {
+        final String uuidString = crime.getUuid().toString();
+        final ContentValues values = getContentValues(crime);
+
+        database.update(CrimeTable.NAME, values,
+                CrimeTable.Cols.UUID + " = ?",
+                new String[] { uuidString });
+    }
+
+    private ContentValues getContentValues(final Crime crime) {
+        final ContentValues contentValues = new ContentValues();
+        contentValues.put(CrimeTable.Cols.UUID, crime.getUuid().toString());
+        contentValues.put(CrimeTable.Cols.DATE, crime.getDate().getTime());
+        contentValues.put(CrimeTable.Cols.TITLE, crime.getTitle());
+        contentValues.put(CrimeTable.Cols.SOLVED, crime.isSolved());
+        return contentValues;
+    }
+
+    private CrimeLab(final Context context) {
+        this.context = context.getApplicationContext();
+        database = new CrimeBaseHelper(context)
+                .getWritableDatabase();
+
+        this.context = context;
     }
 
     public Optional<Crime> getCrime(@NonNull final UUID uuid) {
-        return crimes.stream()
-                .filter(crime -> Objects.equals(uuid, crime.getUuid()))
-                .findAny();
+        CrimeCursorWrapper cursor = queryCrimes(
+                CrimeTable.Cols.UUID + " = ?",
+                new String[] { uuid.toString() }
+        );
+
+        try {
+            if (cursor.getCount() == 0) {
+                return Optional.empty();
+            }
+
+            cursor.moveToFirst();
+            return Optional.of(cursor.getCrime());
+        } finally {
+            cursor.close();
+        }
+    }
+
+    private CrimeCursorWrapper queryCrimes(String whereClause, String[] whereArgs) {
+        Cursor cursor = database.query(
+                CrimeTable.NAME,
+                null, // columns - null selects all columns
+                whereClause,
+                whereArgs,
+                null, // groupBy
+                null, // having
+                null  // orderBy
+        );
+
+        return new CrimeCursorWrapper(cursor);
     }
 }

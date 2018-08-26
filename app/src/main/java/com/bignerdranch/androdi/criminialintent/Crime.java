@@ -1,5 +1,6 @@
 package com.bignerdranch.androdi.criminialintent;
 
+import java.io.Serializable;
 import java.util.Date;
 import java.util.UUID;
 
@@ -9,12 +10,21 @@ import lombok.Setter;
 import static java.util.UUID.randomUUID;
 
 @Getter
-public class Crime {
+public class Crime implements Serializable {
 
     private final UUID uuid;
-    private final Date date;
+    @Setter private Date date;
     @Setter private String title;
     @Setter private boolean isSolved;
+
+    public Crime() {
+        this.uuid = randomUUID();
+        this.date = new Date();
+    }
+
+    public Crime(final UUID uuid) {
+        this.uuid = uuid;
+    }
 
     public Crime(final String title, final boolean isSolved) {
         this.uuid = randomUUID();
