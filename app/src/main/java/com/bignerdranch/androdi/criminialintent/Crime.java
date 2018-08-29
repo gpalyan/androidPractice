@@ -34,4 +34,8 @@ public class Crime implements Serializable {
         this.title = title;
         this.isSolved = isSolved;
     }
+
+    public String getPhotoFilename() {
+        return "IMG_" + getUuid().toString() + ".jpg";
+    }
 }
