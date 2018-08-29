@@ -10,12 +10,14 @@ import lombok.Setter;
 import static java.util.UUID.randomUUID;
 
 @Getter
+@Setter
 public class Crime implements Serializable {
 
-    private final UUID uuid;
-    @Setter private Date date;
-    @Setter private String title;
-    @Setter private boolean isSolved;
+    private UUID uuid;
+    private Date date;
+    private String title;
+    private boolean isSolved;
+    private String suspect;
 
     public Crime() {
         this.uuid = randomUUID();
